@@ -89,6 +89,11 @@ input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px}
 .card-civ{font-family:var(--display);font-weight:700;font-size:clamp(26px,2.4vw,32px);line-height:1.1;margin:16px 0 4px}
 .card-kind{margin:0;font-size:17px;color:var(--c);font-weight:700}
 .card-pack{margin:2px 0 0;color:var(--ash);font-size:15px}
+.card-years{margin:2px 0 6px;font-family:var(--display);font-weight:500;font-size:19px;letter-spacing:.03em;color:var(--bone)}
+.wonder{margin:16px 0 0;padding:10px 14px;width:100%;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+.wonder h3{margin:0;font-size:14px;font-weight:500;color:var(--ash)}
+.wonder p{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:17px;color:var(--c)}
+.wonder small{display:block;color:var(--ash);font-size:14px;margin-top:2px}
 .tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px 0 0;padding:0;list-style:none}
 .tags li{border:1px solid var(--edge);border-radius:3px;padding:1px 9px;font-size:15px}
 .card-clear{position:absolute;top:12px;right:12px;background:var(--plate);border:1px solid var(--edge);border-radius:3px;padding:2px 10px;font-size:14px;color:var(--ash);cursor:pointer}
@@ -285,6 +290,37 @@ const RAW = [
   ["Scots","Scots","rotn","SC",["Highland Cattle","Tower Houses","Clans"]],
 ];
 
+// Each family's Wonder: [in-game name, the real building it's based on].
+// Variant civs build their base civ's Wonder. Leave a family out if unknown.
+const WONDERS = {
+  "Abbasid Dynasty":   ["The Prayer Hall of Uqba", "the Great Mosque of Kairouan, Tunisia"],
+  "Chinese":           ["Enclave of the Emperor", "the Forbidden City, Beijing"],
+  "Delhi Sultanate":   ["Great Palace of Agra", "Agra Fort, India"],
+  "English":           ["Cathedral of St. Thomas", "Canterbury Cathedral, England"],
+  "French":            ["Notre Dame de Paris", "Notre-Dame Cathedral, Paris"],
+  "Holy Roman Empire": ["Great Palace of Flensburg", "Glücksburg Castle, Germany"],
+  "Malians":           ["The Great Mosque", "the Great Mosque of Djenné, Mali"],
+  "Mongols":           ["Monument of the Great Khan", "the Genghis Khan Equestrian Statue, Mongolia"],
+  "Rus":               ["Cathedral of the Tsar", "St Basil's Cathedral, Moscow"],
+  "Byzantines":        ["The Cathedral of Divine Wisdom", "the Hagia Sophia, Istanbul"],
+  "Japanese":          ["The Tokugawa Shrine", "the Toshogu pagoda, Nikko"],
+};
+
+// When each civ existed in history. "c." means roughly.
+const YEARS = {
+  "Abbasid Dynasty":"750 – 1258", "Ayyubids":"1171 – 1260",
+  "Chinese":"960 – 1644 (Song to Ming)", "Zhu Xi's Legacy":"960 – 1279 (Song dynasty)", "Jin Dynasty":"1115 – 1234",
+  "Delhi Sultanate":"1206 – 1526", "Tughlaq Dynasty":"1320 – 1414",
+  "English":"927 – 1707", "House of Lancaster":"1399 – 1471",
+  "French":"987 – 1792", "Jeanne d'Arc":"c. 1412 – 1431", "Knights Templar":"1119 – 1312",
+  "Holy Roman Empire":"962 – 1806", "Order of the Dragon":"1408 – c. 1500",
+  "Mongols":"1206 – 1368", "Golden Horde":"1242 – 1502",
+  "Rus":"882 – 1547", "Ottomans":"1299 – 1922", "Malians":"c. 1235 – 1670",
+  "Byzantines":"330 – 1453", "Macedonian Dynasty":"867 – 1056",
+  "Japanese":"1185 – 1603", "Sengoku Daimyo":"1467 – 1603",
+  "Vikings":"793 – 1066", "Scots":"843 – 1707",
+};
+
 /* =====================================================================
    STATE
    ===================================================================== */
@@ -400,9 +436,11 @@ function renderCard(show = null, spinning = false, landed = false) {
   card.innerHTML = `${spinning ? "" : `<button type="button" class="card-clear" data-act="clear-card" aria-label="Clear the drawn civ">Clear</button>`}
     <div class="banner" style="--ink:${inkFor(col)}" aria-hidden="true"><span>${esc(c.code)}</span></div>
     <h2 class="card-civ">${esc(c.name)}</h2>
+    ${YEARS[c.name] ? `<p class="card-years">${esc(YEARS[c.name])}</p>` : ""}
     <p class="card-kind">${esc(describe(c))}</p>
     <p class="card-pack">${esc(PACK_NAME[c.pack])}</p>
-    <ul class="tags">${c.tags.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`;
+    <ul class="tags">${c.tags.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+    ${WONDERS[c.family] ? `<div class="wonder"><h3>Wonder</h3><p>${esc(WONDERS[c.family][0])}</p><small>Based on ${esc(WONDERS[c.family][1])}</small></div>` : ""}`;
 }
 
 /* Dropdown for choosing a civ by hand. Lists every civ (ignores DLC and "Draw from"),
@@ -440,7 +478,7 @@ function slotEl(i) {
     ? `<div class="slot-body filled">
          <div class="civ" data-drag="slot" data-from="${i}" title="Drag to another player to swap">
            ${crest(c)}
-           <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(describe(c))}</div></div>
+           <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(YEARS[c.name] || describe(c))}</div></div>
          </div>
          <div class="slot-actions">
            <button type="button" data-act="reroll" data-i="${i}">Reroll</button>
