@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civ Draw · Age of Empires IV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#1d2533; --plate:#273042; --plate-2:#313b4f; --edge:#45516a;
+  --gold:#d6ad5a; --gold-dim:#9a7b3e; --bone:#ede6d4; --ash:#a3aab8; --danger:#d0553f;
+  --display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --ui:"Alegreya Sans", "Gill Sans", system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  min-height:100vh; color:var(--bone); font-family:var(--ui); font-size:17px; line-height:1.45;
+  background:radial-gradient(ellipse at 50% 20%, #26304a 0%, var(--night) 60%) fixed, var(--night);
+}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.board{
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,380px) minmax(0,1fr);
+  gap:clamp(16px,3vw,48px); max-width:1400px; margin:0 auto; padding:28px 24px 12px;
+}
+.column{display:flex;flex-direction:column;gap:14px}
+
+/* ---------- centre ---------- */
+.altar{display:flex;flex-direction:column;align-items:center;gap:14px}
+.title{font-family:var(--display);font-weight:700;font-size:clamp(36px,3.6vw,48px);line-height:1;margin:0;color:var(--gold);letter-spacing:.04em}
+.subtitle{margin:-6px 0 4px;color:var(--ash);font-size:15px}
+.roll{
+  background:var(--gold); color:#21190b; border:0; border-radius:3px;
+  padding:12px 28px; font-weight:700; font-size:18px; cursor:pointer;
+  box-shadow:inset 0 -3px 0 var(--gold-dim);
+}
+.roll:hover{background:#e0ba6b}
+.roll:active{transform:translateY(1px);box-shadow:inset 0 -1px 0 var(--gold-dim)}
+
+.dlc{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.dlc-label{color:var(--ash);font-size:15px}
+.dlc-btn{background:var(--plate);border:1px solid var(--edge);border-radius:3px;padding:6px 12px;cursor:pointer;display:flex;gap:10px;align-items:center}
+.dlc-btn::after{content:"";border:5px solid transparent;border-top-color:var(--ash);margin-top:5px}
+.dlc-panel{
+  position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:20;
+  width:min(360px,90vw);max-height:60vh;overflow:auto;background:var(--plate);
+  border:1px solid var(--edge);border-radius:4px;padding:12px 14px;box-shadow:0 12px 30px rgba(0,0,0,.45);
+}
+.dlc-tools{display:flex;gap:8px;margin-bottom:8px}
+.dlc-panel label{display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer}
+.dlc-panel .count{color:var(--ash);margin-left:auto;font-size:14px;white-space:nowrap}
+input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px}
+
+.pool-panel{width:min(620px,92vw)}
+.pool-summary{margin:0 0 10px;color:var(--ash);font-size:15px}
+.pool-summary strong{color:var(--bone)}
+.pool-groups{columns:2 220px;column-gap:24px}
+.pool-group{break-inside:avoid;margin-bottom:10px}
+.pool-group h3{display:flex;align-items:center;gap:8px;margin:0 0 2px;font-family:var(--display);font-weight:500;font-size:17px;color:var(--gold)}
+.pool-group h3::before{content:"";width:10px;height:10px;border-radius:2px;background:var(--c)}
+.pool-group h3 span{margin-left:auto;font-family:var(--ui);font-size:14px;color:var(--ash)}
+.pool-group ul{list-style:none;margin:0;padding:0}
+.pool-group li{padding:1px 0;font-size:15px}
+.pool-group li.out{color:var(--ash)}
+.pool-group li.out s{text-decoration-color:var(--ash)}
+.pool-group li em{font-style:normal;font-size:13px;margin-left:6px}
+
+/* The drawn card: a hanging heraldic banner in the civ's colour */
+.card{
+  --c:var(--gold);
+  position:relative; width:100%; min-height:360px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  text-align:center; padding:0 22px 26px; border-radius:6px;
+  background:var(--plate); border:1px solid var(--edge); user-select:none;
+}
+.card[data-drag]{cursor:grab;touch-action:none}
+.card.empty{background:transparent;border:1px dashed var(--edge);justify-content:center;color:var(--ash)}
+.card.empty p{max-width:24ch;margin:0}
+.banner{
+  width:116px;height:150px;margin-top:-1px;background:var(--c);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);
+  display:grid;place-items:center;padding-bottom:22px;
+  box-shadow:inset 0 6px 0 rgba(0,0,0,.18);
+}
+.banner span{font-family:var(--display);font-weight:700;font-size:38px;color:var(--ink,#1a1508);letter-spacing:.02em}
+.card-civ{font-family:var(--display);font-weight:700;font-size:clamp(26px,2.4vw,32px);line-height:1.1;margin:16px 0 4px}
+.card-kind{margin:0;font-size:17px;color:var(--c);font-weight:700}
+.card-pack{margin:2px 0 0;color:var(--ash);font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px 0 0;padding:0;list-style:none}
+.tags li{border:1px solid var(--edge);border-radius:3px;padding:1px 9px;font-size:15px}
+.card-clear{position:absolute;top:12px;right:12px;background:var(--plate);border:1px solid var(--edge);border-radius:3px;padding:2px 10px;font-size:14px;color:var(--ash);cursor:pointer}
+.card-clear:hover{border-color:var(--gold);color:var(--gold)}
+.ghost .card-clear{display:none}
+.card.spinning .card-civ{opacity:.55}
+.card.landed .banner{animation:unfurl .45s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes unfurl{from{transform:scaleY(.25);transform-origin:top}to{transform:none;transform-origin:top}}
+.hint{margin:0;color:var(--ash);font-size:15px;text-align:center}
+
+.crest{
+  --c:var(--gold);
+  display:inline-grid;place-items:center;flex:none;width:40px;height:48px;
+  background:var(--c);color:var(--ink,#1a1508);font-weight:700;font-size:15px;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 84%,0 100%);padding-bottom:8px;
+}
+
+/* ---------- slots ---------- */
+.slot{
+  --team:transparent;
+  background:var(--plate); border:1px solid var(--edge); border-left:5px solid var(--team);
+  border-radius:4px; min-height:140px; display:flex; flex-direction:column; transition:border-color .15s, background .15s;
+}
+.slot:not(.teamed){border-left-width:1px}
+.slot.over{background:var(--plate-2);border-color:var(--gold)}
+.slot-head{display:flex;align-items:center;gap:8px;padding:10px 12px 0}
+.pnum{font-family:var(--display);font-weight:700;font-size:20px;line-height:1;color:var(--gold);min-width:34px}
+.pname{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--edge);padding:3px 2px}
+.pname::placeholder{color:var(--ash)}
+.pname:focus{border-bottom-color:var(--gold);outline:none}
+.team{background:var(--plate-2);border:1px solid var(--edge);border-radius:3px;padding:2px 4px}
+.slot-body{flex:1;margin:10px 12px 12px;border-radius:3px}
+.slot-body.empty{display:flex;flex-direction:column;gap:8px}
+.drop{
+  flex:1;display:grid;place-items:center;background:transparent;border:1px dashed var(--edge);border-radius:3px;
+  color:var(--ash);cursor:default;padding:10px;min-height:52px;
+}
+.drop:not(:disabled){cursor:pointer;color:var(--bone);border-color:var(--gold-dim)}
+.drop:not(:disabled):hover{background:var(--plate-2)}
+.choose{width:100%;background:var(--plate-2);border:1px solid var(--edge);border-radius:3px;padding:5px 6px}
+.choosing{display:flex;gap:6px;align-items:center;width:100%}
+.choosing .choose{flex:1;min-width:0}
+.slot-body.filled{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.civ{display:flex;align-items:center;gap:12px;flex:1;min-width:180px;cursor:grab;touch-action:none;user-select:none}
+.civ .name{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.15}
+.civ .meta{color:var(--ash);font-size:15px}
+.slot-actions{display:flex;gap:6px}
+.ghostbtn,.slot-actions button,.dlc-tools button,.actions button{
+  background:transparent;border:1px solid var(--edge);border-radius:3px;padding:4px 10px;cursor:pointer;font-size:15px;
+}
+.ghostbtn:hover,.slot-actions button:hover,.dlc-tools button:hover,.actions button:hover{border-color:var(--gold);color:var(--gold)}
+
+.lifted{opacity:.35}
+.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.95;box-shadow:0 16px 40px rgba(0,0,0,.5);margin:0!important}
+body.dragging{cursor:grabbing}
+
+/* ---------- settings ---------- */
+.settings{max-width:1400px;margin:18px auto 40px;padding:0 24px}
+.tab{
+  display:inline-block;background:var(--plate);border:1px solid var(--edge);border-bottom:0;
+  border-radius:5px 5px 0 0;padding:6px 26px;font-weight:700;position:relative;top:1px;
+}
+.settings-body{
+  background:var(--plate);border:1px solid var(--edge);border-radius:0 4px 4px 4px;padding:18px 20px;
+  display:flex;flex-wrap:wrap;gap:18px 32px;align-items:center;
+}
+.field{display:flex;align-items:center;gap:10px}
+.field input{width:64px;background:var(--plate-2);border:1px solid var(--edge);border-radius:3px;padding:4px 8px}
+.check{display:flex;align-items:center;gap:8px;cursor:pointer}
+.group{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+#status{color:var(--gold);font-size:15px;min-width:5ch}
+
+@media (max-width:900px){
+  .board{grid-template-columns:1fr 1fr}
+  .altar{grid-column:1/-1;order:-1}
+  .card{min-height:300px}
+}
+@media (max-width:560px){
+  .board{grid-template-columns:1fr;padding:20px 14px 8px}
+  .settings{padding:0 14px}
+  .actions{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .card.landed .banner{animation:none}
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<main class="board">
+  <section class="column" id="colLeft" aria-label="Players"></section>
+
+  <section class="altar">
+    <h1 class="title">Civ Draw</h1>
+    <p class="subtitle">Age of Empires IV</p>
+    <button id="rollBtn" class="roll">Draw a civilisation</button>
+    <div class="dlc">
+      <span class="dlc-label">DLC selection</span>
+      <button id="dlcBtn" class="dlc-btn" aria-expanded="false" aria-controls="dlcPanel"></button>
+      <div id="dlcPanel" class="dlc-panel" hidden>
+        <div class="dlc-tools">
+          <button type="button" data-dlc="all">Select all</button>
+          <button type="button" data-dlc="none">Clear all</button>
+        </div>
+        <div id="dlcList"></div>
+      </div>
+      <button id="poolBtn" class="dlc-btn" aria-expanded="false" aria-controls="poolPanel"></button>
+      <div id="poolPanel" class="dlc-panel pool-panel" hidden></div>
+    </div>
+    <div id="card" class="card empty" aria-live="polite"></div>
+    <p class="hint">Drag the card onto a player, or click a player to place it. Drag between players to swap, or pick a civ from a player's dropdown.</p>
+  </section>
+
+  <section class="column" id="colRight" aria-label="Players"></section>
+</main>
+
+<section class="settings">
+  <div class="tab" id="settingsTab">Settings</div>
+  <div class="settings-body" role="group" aria-labelledby="settingsTab">
+    <label class="field"><span>Number of players</span><input id="players" type="number" min="1" max="8"></label>
+    <div class="group" role="group" aria-labelledby="kindLabel">
+      <span id="kindLabel">Draw from</span>
+      <label class="check"><input type="checkbox" name="kind" value="full"> Full civs</label>
+      <label class="check"><input type="checkbox" name="kind" value="variant"> Variant civs</label>
+    </div>
+    <label class="check"><input id="teams" type="checkbox"> Teams</label>
+    <label class="check"><input id="unique" type="checkbox"> No duplicate civs</label>
+    <label class="check"><input id="oneFamily" type="checkbox"> One per civ family</label>
+    <div class="actions">
+      <button type="button" id="fillBtn">Fill empty slots</button>
+      <button type="button" id="copyBtn">Copy results</button>
+      <button type="button" id="resetBtn">Clear all slots</button>
+      <span id="status" role="status"></span>
+    </div>
+  </div>
+</section>
+
+<script>
+/* =====================================================================
+   DATA — edit these lists when new DLC comes out.
+   ===================================================================== */
+// "upcoming: true" packs start unticked until they're released.
+const PACKS = [
+  { id:"base", name:"Base game (Anniversary Edition)" },
+  { id:"sa",   name:"The Sultans Ascend" },
+  { id:"kcr",  name:"Knights of Cross and Rose" },
+  { id:"dote", name:"Dynasties of the East" },
+  { id:"yfl",  name:"Yue Fei's Legacy" },
+  { id:"rotn", name:"Raiders of the North", upcoming:true },
+];
+
+// Civ families: a full civ and its variants share a colour.
+const FAMILIES = {
+  "Abbasid Dynasty":"#3faa8c", "Chinese":"#d8573f", "Delhi Sultanate":"#e3923a", "English":"#c03a52",
+  "French":"#4a78d4", "Holy Roman Empire":"#dcbc45", "Mongols":"#5aa7d0", "Rus":"#8fa3b6",
+  "Ottomans":"#3b9a5c", "Malians":"#b9894a", "Byzantines":"#9a62b8", "Japanese":"#df6d8e",
+  "Vikings":"#b8b0a0", "Scots":"#8a9c48",
+};
+
+// [civ, family, pack, crest letters, what it's about]
+// A civ whose family is a different name is a variant of that civ.
+const RAW = [
+  ["Abbasid Dynasty","Abbasid Dynasty","base","AB",["Technology","Camels","House of Wisdom"]],
+  ["Chinese","Chinese","base","CH",["Dynasties","Gunpowder","Taxes"]],
+  ["Delhi Sultanate","Delhi Sultanate","base","DS",["Elephants","Research","Religion"]],
+  ["English","English","base","EN",["Defence","Longbows","Farming"]],
+  ["French","French","base","FR",["Trade","Cavalry","Keeps"]],
+  ["Holy Roman Empire","Holy Roman Empire","base","HR",["Infantry","Religion","Defence"]],
+  ["Mongols","Mongols","base","MO",["Aggression","Cavalry","Nomadic"]],
+  ["Rus","Rus","base","RU",["Expansion","Cavalry","Hunting"]],
+  ["Ottomans","Ottomans","base","OT",["Imperial Council","Military Schools","Siege"]],
+  ["Malians","Malians","base","ML",["Gold Economy","Infantry","Cattle"]],
+
+  ["Byzantines","Byzantines","sa","BY",["City Planning","Mercenaries","Defence"]],
+  ["Japanese","Japanese","sa","JA",["Agriculture","Bannermen","Infantry"]],
+  ["Ayyubids","Abbasid Dynasty","sa","AY",["Adaptable","Camels","Wing Bonuses"]],
+  ["Jeanne d'Arc","French","sa","JD",["Hero Unit","Trade","Cavalry"]],
+  ["Order of the Dragon","Holy Roman Empire","sa","OD",["Elite Units","Infantry","Defence"]],
+  ["Zhu Xi's Legacy","Chinese","sa","ZX",["Dynasties","Taxes","Technology"]],
+
+  ["Knights Templar","French","kcr","KT",["Commanderies","Pilgrims","Heavy Cavalry"]],
+  ["House of Lancaster","English","kcr","HL",["Manors","Longbows","Defence"]],
+
+  ["Golden Horde","Mongols","dote","GH",["The Khan's Army","Golden Tent","Ovoos"]],
+  ["Macedonian Dynasty","Byzantines","dote","MD",["Varangians","Silver Economy","Defence"]],
+  ["Sengoku Daimyo","Japanese","dote","SD",["Clan Banners","Daimyo Estates","Infantry"]],
+  ["Tughlaq Dynasty","Delhi Sultanate","dote","TD",["Governors","Worker Elephants","Fast Research"]],
+
+  ["Jin Dynasty","Chinese","yfl","JN",["Mounted Villagers","Tributary States","Heavy Cavalry"]],
+
+  ["Vikings","Vikings","rotn","VK",["Raiding","Fast Infantry","Naval"]],
+  ["Scots","Scots","rotn","SC",["Highland Cattle","Tower Houses","Clans"]],
+];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const CIVS = RAW.map(([name, family, pack, code, tags]) => ({ name, family, pack, code, tags, variant: name !== family }));
+const BY_NAME = Object.fromEntries(CIVS.map(c => [c.name, c]));
+const PACK_NAME = Object.fromEntries(PACKS.map(p => [p.id, p.name]));
+const TEAM_COLORS = ["#d06a4f", "#5b8fd1", "#6fae5a", "#b77ad0"];
+const KEY = "aoe4-civ-draw-v1";
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const kindOf = c => c.variant ? "variant" : "full";
+
+const defaults = () => ({
+  owned: PACKS.filter(p => !p.upcoming).map(p => p.id), players: 8, teams: false,
+  unique: true, oneFamily: false, kinds: ["full", "variant"], current: null,
+  slots: Array.from({ length: 8 }, (_, i) => ({ name: "", team: i < 4 ? 1 : 2, civ: null })),
+});
+let state = load();
+let rolling = false;
+let suppressClick = false;
+let editing = new Set(); // filled slots currently showing the "change civ" dropdown
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.slots) && s.slots.length === 8) {
+      const merged = { ...defaults(), ...s };
+      merged.slots.forEach(sl => { if (sl.civ && !BY_NAME[sl.civ]) sl.civ = null; });
+      if (merged.current && !BY_NAME[merged.current]) merged.current = null;
+      return merged;
+    }
+  } catch (e) {}
+  return defaults();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+const who = i => state.slots[i].name.trim() || `P${i + 1}`;
+const describe = c => c.variant ? `Variant of the ${c.family}` : "Full civilisation";
+
+/* Civs that can still be drawn. */
+function pool({ ignoreSlot = -1, avoid = null, countCurrent = true } = {}) {
+  const owned = new Set(state.owned);
+  const used = state.slots.slice(0, state.players)
+    .filter((s, i) => i !== ignoreSlot && s.civ).map(s => s.civ);
+  if (countCurrent && state.current) used.push(state.current);
+  const usedSet = new Set(used);
+  const usedFamilies = new Set(used.map(n => BY_NAME[n].family));
+  return CIVS.filter(c =>
+    owned.has(c.pack) && c.name !== avoid &&
+    state.kinds.includes(kindOf(c)) &&
+    !(state.unique && usedSet.has(c.name)) &&
+    !(state.oneFamily && usedFamilies.has(c.family)));
+}
+const pickFrom = arr => arr[Math.floor(Math.random() * arr.length)];
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+function inkFor(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 140 ? "#1a1508" : "#f4efe4";
+}
+const colorOf = c => FAMILIES[c.family] || "#888888";
+const crest = c => `<span class="crest" style="--c:${colorOf(c)};--ink:${inkFor(colorOf(c))}" aria-hidden="true">${esc(c.code)}</span>`;
+
+function renderPool() {
+  const btn = $("#poolBtn"), panel = $("#poolPanel");
+  const available = new Set(pool({ countCurrent: false }).map(c => c.name));
+  btn.textContent = `${available.size} in pool`;
+  if (panel.hidden) return;
+
+  const owned = new Set(state.owned);
+  const eligible = CIVS.filter(c => owned.has(c.pack) && state.kinds.includes(kindOf(c)));
+  const holder = {};
+  state.slots.slice(0, state.players).forEach((s, i) => { if (s.civ && !holder[s.civ]) holder[s.civ] = esc(who(i)); });
+
+  if (!eligible.length) {
+    panel.innerHTML = `<p class="pool-summary">No civs match your DLC selection and "Draw from" settings.</p>`;
+    return;
+  }
+  const groups = Object.keys(FAMILIES).map(fam => {
+    const cs = eligible.filter(c => c.family === fam);
+    if (!cs.length) return "";
+    const free = cs.filter(c => available.has(c.name)).length;
+    return `<section class="pool-group" style="--c:${FAMILIES[fam]}">
+      <h3>${esc(fam)}<span>${free} of ${cs.length}</span></h3>
+      <ul>${cs.map(c => available.has(c.name)
+        ? `<li>${esc(c.name)}</li>`
+        : `<li class="out"><s>${esc(c.name)}</s><em>${holder[c.name] || "family already taken"}</em></li>`).join("")}</ul>
+    </section>`;
+  }).join("");
+  panel.innerHTML = `<p class="pool-summary"><strong>${available.size} of ${eligible.length}</strong> civs can be drawn with your DLC and "Draw from" settings. Struck-through civs are taken.</p>
+    <div class="pool-groups">${groups}</div>`;
+}
+
+function renderCard(show = null, spinning = false, landed = false) {
+  const card = $("#card");
+  const c = show || (state.current && BY_NAME[state.current]);
+  card.className = "card" + (c ? "" : " empty") + (spinning ? " spinning" : "") + (landed ? " landed" : "");
+  if (!spinning) renderPool();
+  if (!c) {
+    card.removeAttribute("data-drag");
+    card.style.removeProperty("--c");
+    card.innerHTML = pool().length
+      ? `<p>Draw a civilisation, then drag it onto a player.</p>`
+      : `<p>Every civ matching your DLC and settings is already taken. Clear a slot, select more DLC, or widen "Draw from".</p>`;
+    return;
+  }
+  if (spinning) card.removeAttribute("data-drag"); else card.dataset.drag = "roll";
+  const col = colorOf(c);
+  card.style.setProperty("--c", col);
+  card.innerHTML = `${spinning ? "" : `<button type="button" class="card-clear" data-act="clear-card" aria-label="Clear the drawn civ">Clear</button>`}
+    <div class="banner" style="--ink:${inkFor(col)}" aria-hidden="true"><span>${esc(c.code)}</span></div>
+    <h2 class="card-civ">${esc(c.name)}</h2>
+    <p class="card-kind">${esc(describe(c))}</p>
+    <p class="card-pack">${esc(PACK_NAME[c.pack])}</p>
+    <ul class="tags">${c.tags.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`;
+}
+
+/* Dropdown for choosing a civ by hand. Lists every civ (ignores DLC and "Draw from"),
+   and when "No duplicate civs" is on, disables civs another player already has. */
+function chooser(i) {
+  const s = state.slots[i];
+  const taken = {};
+  if (state.unique) state.slots.slice(0, state.players).forEach((o, j) => { if (o.civ && j !== i) taken[o.civ] = j; });
+  const groups = Object.keys(FAMILIES).map(fam => {
+    const cs = CIVS.filter(c => c.family === fam);
+    return `<optgroup label="${esc(fam)}">${cs.map(c => {
+      const t = taken[c.name];
+      return `<option value="${esc(c.name)}"${t !== undefined ? " disabled" : ""}${c.name === s.civ ? " selected" : ""}>${esc(c.name)}${t !== undefined ? `, taken by ${esc(who(t))}` : ""}</option>`;
+    }).join("")}</optgroup>`;
+  }).join("");
+  return `<select class="choose" data-i="${i}" aria-label="Choose a civ for player ${i + 1}">
+    <option value="">${s.civ ? "Choose a different civ…" : "Or choose a civ…"}</option>${groups}</select>`;
+}
+
+function slotEl(i) {
+  const s = state.slots[i];
+  const c = s.civ && BY_NAME[s.civ];
+  const el = document.createElement("article");
+  el.className = "slot" + (state.teams ? " teamed" : "");
+  el.dataset.slot = i;
+  if (state.teams) el.style.setProperty("--team", TEAM_COLORS[s.team - 1]);
+  const teamSelect = state.teams
+    ? `<select class="team" data-i="${i}" aria-label="Team for player ${i + 1}">
+        ${[1, 2, 3, 4].map(t => `<option value="${t}"${t === s.team ? " selected" : ""}>Team ${t}</option>`).join("")}
+       </select>` : "";
+  const body = c && editing.has(i)
+    ? `<div class="slot-body filled"><div class="choosing">${chooser(i)}
+         <button type="button" class="ghostbtn" data-act="cancel" data-i="${i}">Cancel</button></div></div>`
+    : c
+    ? `<div class="slot-body filled">
+         <div class="civ" data-drag="slot" data-from="${i}" title="Drag to another player to swap">
+           ${crest(c)}
+           <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(describe(c))}</div></div>
+         </div>
+         <div class="slot-actions">
+           <button type="button" data-act="reroll" data-i="${i}">Reroll</button>
+           <button type="button" data-act="change" data-i="${i}">Change</button>
+           <button type="button" data-act="clear" data-i="${i}">Clear</button>
+         </div>
+       </div>`
+    : `<div class="slot-body empty">
+         <button type="button" class="drop" data-act="place" data-i="${i}"${state.current && !rolling ? "" : " disabled"}>
+           ${state.current && !rolling ? `Place ${esc(state.current)} here` : "Drop a civ here"}
+         </button>
+         ${chooser(i)}
+       </div>`;
+  el.innerHTML = `
+    <header class="slot-head">
+      <span class="pnum">P${i + 1}</span>
+      <input class="pname" data-i="${i}" maxlength="24" placeholder="Player ${i + 1}"
+             aria-label="Name of player ${i + 1}" value="${esc(s.name)}">
+      ${teamSelect}
+    </header>${body}`;
+  return el;
+}
+
+function renderSlots() {
+  const left = $("#colLeft"), right = $("#colRight");
+  left.innerHTML = ""; right.innerHTML = "";
+  const leftCount = Math.ceil(state.players / 2);
+  for (let i = 0; i < state.players; i++) (i < leftCount ? left : right).appendChild(slotEl(i));
+}
+
+function renderDlc() {
+  const counts = {};
+  CIVS.forEach(c => counts[c.pack] = (counts[c.pack] || 0) + 1);
+  const owned = new Set(state.owned);
+  $("#dlcList").innerHTML = PACKS.map(p => `
+    <label><input type="checkbox" data-pack="${p.id}"${owned.has(p.id) ? " checked" : ""}>
+      ${esc(p.name)} <span class="count">${counts[p.id] || 0} ${counts[p.id] === 1 ? "civ" : "civs"}${p.upcoming ? ", upcoming" : ""}</span></label>`).join("");
+  updateDlcButton();
+}
+function updateDlcButton() { $("#dlcBtn").textContent = `${state.owned.length} of ${PACKS.length} packs`; }
+
+function renderSettings() {
+  $("#players").value = state.players;
+  $("#teams").checked = state.teams;
+  $("#unique").checked = state.unique;
+  $("#oneFamily").checked = state.oneFamily;
+  document.querySelectorAll('input[name="kind"]').forEach(cb => cb.checked = state.kinds.includes(cb.value));
+}
+
+function renderAll() { renderCard(); renderSlots(); }
+
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+function roll() {
+  if (rolling) return;
+  let p = pool({ avoid: state.current, countCurrent: false });
+  if (!p.length) p = pool({ countCurrent: false });
+  if (!p.length) { state.current = null; save(); renderAll(); return; }
+  const pick = pickFrom(p);
+  if (reducedMotion || p.length === 1) { state.current = pick.name; save(); renderAll(); return; }
+  rolling = true;
+  state.current = null;
+  renderSlots();
+  let ticks = 0;
+  const iv = setInterval(() => {
+    renderCard(pickFrom(p), true);
+    if (++ticks >= 14) {
+      clearInterval(iv);
+      rolling = false;
+      state.current = pick.name;
+      save();
+      renderCard(null, false, true);
+      renderSlots();
+    }
+  }, 55);
+}
+
+function placeCurrent(i) {
+  if (!state.current || rolling) return;
+  state.slots[i].civ = state.current;
+  state.current = null;
+  save(); renderAll();
+}
+function swap(a, b) {
+  const t = state.slots[a].civ;
+  state.slots[a].civ = state.slots[b].civ;
+  state.slots[b].civ = t;
+  save(); renderAll();
+}
+function reroll(i) {
+  const s = state.slots[i];
+  const p = pool({ ignoreSlot: i, avoid: s.civ });
+  if (!p.length) return flash("No other civs available");
+  s.civ = pickFrom(p).name;
+  save(); renderAll();
+}
+function fillEmpty() {
+  let filled = 0;
+  for (let i = 0; i < state.players; i++) {
+    if (state.slots[i].civ) continue;
+    const p = pool();
+    if (!p.length) break;
+    state.slots[i].civ = pickFrom(p).name;
+    filled++;
+  }
+  save(); renderAll();
+  if (!filled) flash("Nothing to fill");
+}
+
+function copyResults() {
+  const rows = state.slots.slice(0, state.players).map((s, i) => ({ ...s, i }));
+  if (state.teams) rows.sort((a, b) => a.team - b.team || a.i - b.i);
+  const text = rows.map(s => {
+    const name = s.name.trim() || `Player ${s.i + 1}`;
+    const team = state.teams ? ` (Team ${s.team})` : "";
+    const c = s.civ && BY_NAME[s.civ];
+    return `${name}${team}: ${c ? c.name + (c.variant ? ` (${c.family} variant)` : "") : "no civ yet"}`;
+  }).join("\n");
+  const done = () => flash("Copied");
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) { flash("Copy failed"); }
+  ta.remove();
+}
+
+let flashTimer;
+function flash(msg) {
+  const s = $("#status");
+  s.textContent = msg;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => s.textContent = "", 2000);
+}
+
+/* =====================================================================
+   EVENTS
+   ===================================================================== */
+$("#rollBtn").addEventListener("click", roll);
+$("#fillBtn").addEventListener("click", fillEmpty);
+$("#copyBtn").addEventListener("click", copyResults);
+$("#resetBtn").addEventListener("click", () => {
+  state.slots.forEach(s => s.civ = null);
+  state.current = null;
+  save(); renderAll();
+});
+
+document.addEventListener("click", e => {
+  if (suppressClick) return;
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const i = +b.dataset.i;
+  const act = b.dataset.act;
+  if (act === "clear-card") { state.current = null; save(); renderAll(); }
+  if (act === "change") { editing.add(i); renderSlots(); document.querySelector(`.choose[data-i="${i}"]`)?.focus(); }
+  if (act === "cancel") { editing.delete(i); renderSlots(); }
+  if (act === "place") placeCurrent(i);
+  if (act === "reroll") reroll(i);
+  if (act === "clear") { state.slots[i].civ = null; editing.delete(i); save(); renderAll(); }
+});
+
+document.addEventListener("input", e => {
+  if (e.target.matches(".pname")) { state.slots[+e.target.dataset.i].name = e.target.value; save(); }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.matches(".choose") && t.value) {
+    const i = +t.dataset.i;
+    state.slots[i].civ = t.value;
+    if (state.current === t.value) state.current = null;
+    editing.delete(i);
+    save(); renderAll();
+    return;
+  }
+  if (t.matches(".team")) { state.slots[+t.dataset.i].team = +t.value; save(); renderSlots(); }
+  if (t.matches("[data-pack]")) {
+    const set = new Set(state.owned);
+    t.checked ? set.add(t.dataset.pack) : set.delete(t.dataset.pack);
+    state.owned = PACKS.map(p => p.id).filter(id => set.has(id));
+    save(); updateDlcButton(); renderCard();
+  }
+});
+
+$("#players").addEventListener("change", e => {
+  const n = Math.min(8, Math.max(1, parseInt(e.target.value, 10) || 1));
+  e.target.value = n; state.players = n; save(); renderAll();
+});
+document.querySelectorAll('input[name="kind"]').forEach(cb => cb.addEventListener("change", () => {
+  state.kinds = [...document.querySelectorAll('input[name="kind"]:checked')].map(c => c.value);
+  save(); renderCard();
+}));
+$("#teams").addEventListener("change", e => { state.teams = e.target.checked; save(); renderSlots(); });
+$("#unique").addEventListener("change", e => { state.unique = e.target.checked; save(); renderAll(); });
+$("#oneFamily").addEventListener("change", e => { state.oneFamily = e.target.checked; save(); renderCard(); });
+
+// DLC and pool dropdowns
+const dlcBtn = $("#dlcBtn"), dlcPanel = $("#dlcPanel");
+const poolBtn = $("#poolBtn"), poolPanel = $("#poolPanel");
+function setDlcOpen(open) {
+  dlcPanel.hidden = !open; dlcBtn.setAttribute("aria-expanded", open);
+  if (open) setPoolOpen(false);
+}
+function setPoolOpen(open) {
+  poolPanel.hidden = !open; poolBtn.setAttribute("aria-expanded", open);
+  if (open) { setDlcOpen(false); renderPool(); }
+}
+dlcBtn.addEventListener("click", () => setDlcOpen(dlcPanel.hidden));
+poolBtn.addEventListener("click", () => setPoolOpen(poolPanel.hidden));
+document.addEventListener("click", e => {
+  if (!dlcPanel.hidden && !e.target.closest("#dlcPanel, #dlcBtn")) setDlcOpen(false);
+  if (!poolPanel.hidden && !e.target.closest("#poolPanel, #poolBtn")) setPoolOpen(false);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !dlcPanel.hidden) { setDlcOpen(false); dlcBtn.focus(); }
+  if (e.key === "Escape" && !poolPanel.hidden) { setPoolOpen(false); poolBtn.focus(); }
+});
+dlcPanel.addEventListener("click", e => {
+  const b = e.target.closest("[data-dlc]");
+  if (!b) return;
+  state.owned = b.dataset.dlc === "all" ? PACKS.map(p => p.id) : [];
+  save(); renderDlc(); renderCard();
+});
+
+/* Drag and drop with pointer events, so it works with mouse and touch. */
+let drag = null;
+function slotAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest(".slot");
+}
+document.addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;
+  const src = e.target.closest("[data-drag]");
+  if (!src || e.target.closest("button, input, select")) return;
+  drag = { src, kind: src.dataset.drag, from: +src.dataset.from, x0: e.clientX, y0: e.clientY, ghost: null, ox: 0, oy: 0 };
+});
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.ghost) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+    const r = drag.src.getBoundingClientRect();
+    const g = drag.src.cloneNode(true);
+    g.removeAttribute("id"); g.removeAttribute("aria-live");
+    g.classList.remove("landed"); g.classList.add("ghost");
+    g.style.width = r.width + "px"; g.style.height = r.height + "px";
+    drag.ox = drag.x0 - r.left; drag.oy = drag.y0 - r.top;
+    document.body.appendChild(g);
+    drag.ghost = g;
+    drag.src.classList.add("lifted");
+    document.body.classList.add("dragging");
+  }
+  drag.ghost.style.transform = `translate(${e.clientX - drag.ox}px, ${e.clientY - drag.oy}px) rotate(-2deg)`;
+  const over = slotAt(e.clientX, e.clientY);
+  document.querySelectorAll(".slot.over").forEach(s => s !== over && s.classList.remove("over"));
+  if (over) over.classList.add("over");
+});
+function endDrag(e, cancelled) {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.ghost) return;
+  d.ghost.remove();
+  d.src.classList.remove("lifted");
+  document.body.classList.remove("dragging");
+  document.querySelectorAll(".slot.over").forEach(s => s.classList.remove("over"));
+  suppressClick = true; setTimeout(() => suppressClick = false, 0);
+  if (cancelled) return;
+  const target = slotAt(e.clientX, e.clientY);
+  if (!target) return;
+  const i = +target.dataset.slot;
+  if (d.kind === "roll") placeCurrent(i);
+  else if (d.from !== i) swap(d.from, i);
+}
+document.addEventListener("pointerup", e => endDrag(e, false));
+document.addEventListener("pointercancel", e => endDrag(e, true));
+
+/* Go */
+renderSettings();
+renderDlc();
+renderAll();
+</script>
+</body>
+</html>
